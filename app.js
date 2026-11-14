@@ -48,16 +48,6 @@ function fixView() {
 }
 
 
-// Loads the logged-in user AND the rooms. Called on page load and right after login.
-async function loadMe() {
-    const r = await api('me');
-    if (r.ok) {
-        me = r.data.user;
-        rooms = r.data.rooms.map(x => ({ ...x, id: +x.id, capacity: +x.capacity }));
-    }
-    return r;
-}
-
 async function loadView() {
     if (!me) return;
     let r = null;
@@ -242,7 +232,7 @@ async function doLogin(ev) {
     ev.preventDefault();
     const r = await api('login', { email: $('email').value.trim(), password: $('pass').value });
     if (!r.ok) { showErr(apiError(r)); return false; }
-    await loadMe();          // load the rooms right after logging in
+    me = r.data.user;
     await go('calendar');
     return false;
 }
@@ -265,7 +255,7 @@ async function doRegister(ev) {
 
 async function logout() {
     await api('logout', {});
-    me = null; rooms = []; prefill = {};
+    me = null; prefill = {};
     await go('login');
 }
 
@@ -314,7 +304,11 @@ async function answer(id, status) {
 }
 
 (async function init() {
-    const r = await loadMe();
-    if (!r.ok && r.status !== 401) flash(r.data.error || 'Cannot reach the server.', 'error');
+    const r = await api('me');
+    if (r.ok) {
+        me = r.data.user;
+        rooms = r.data.rooms.map(x => ({ ...x, id: +x.id, capacity: +x.capacity }));
+    }
+    else flash(r.data.error || 'Cannot reach the server.', 'error');
     await go(me ? 'calendar' : 'login');
 })();
